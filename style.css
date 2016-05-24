@@ -260,25 +260,23 @@ label[for='toggle-all'] {
 #todo-list li label.time.resumed {
     color: #A6E37D;
     position: absolute;
-    top: 20px;
     right: 44px;
     bottom: 0;
     margin: auto 0;
     font-size: 20px;
-    margin-bottom: 11px;
     transition: color 0.4s;
+    margin-bottom: 20px;
 }
 
 #todo-list li label.time.paused {
     color: #FFCC55;
     position: absolute;
-    top: 20px;
     right: 44px;
     bottom: 0;
     margin: auto 0;
     font-size: 20px;
-    margin-bottom: 11px;
     transition: color 0.4s;
+    margin-bottom: 20px;
 }
 
 #todo-list li label.time.resumed:hover {
