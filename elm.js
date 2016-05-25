@@ -3205,10 +3205,11 @@ function toEffect(isCmd, home, taggers, value)
 {
 	function applyTaggers(x)
 	{
-		while (taggers)
+		var temp = taggers;
+		while (temp)
 		{
-			x = taggers.tagger(x);
-			taggers = taggers.rest;
+			x = temp.tagger(x);
+			temp = temp.rest;
 		}
 		return x;
 	}
@@ -5531,7 +5532,10 @@ function badOneOf(problems)
 	return { tag: 'oneOf', problems: problems };
 }
 
-var bad = { tag: 'fail' };
+function bad(msg)
+{
+	return { tag: 'fail', msg: msg };
+}
 
 function badToString(problem)
 {
@@ -5567,7 +5571,8 @@ function badToString(problem)
 
 			case 'fail':
 				return 'I ran into a `fail` decoder'
-					+ (context === '_' ? '' : ' at ' + context);
+					+ (context === '_' ? '' : ' at ' + context)
+					+ ': ' + problem.msg;
 		}
 	}
 }
@@ -5614,14 +5619,19 @@ function runHelp(decoder, value)
 				: badPrimitive('a Bool', value);
 
 		case 'int':
-			var isNotInt =
-				typeof value !== 'number'
-				|| !(-2147483647 < value && value < 2147483647 && (value | 0) === value)
-				|| !(isFinite(value) && !(value % 1));
+			if (typeof value !== 'number') {
+				return badPrimitive('an Int', value);
+			}
 
-			return isNotInt
-				? badPrimitive('an Int', value)
-				: ok(value);
+			if (-2147483647 < value && value < 2147483647 && (value | 0) === value) {
+				return ok(value);
+			}
+
+			if (isFinite(value) && !(value % 1)) {
+				return ok(value);
+			}
+
+			return badPrimitive('an Int', value);
 
 		case 'float':
 			return (typeof value === 'number')
@@ -5701,7 +5711,7 @@ function runHelp(decoder, value)
 		case 'key-value':
 			if (typeof value !== 'object' || value === null || value instanceof Array)
 			{
-				return err('an object', value);
+				return badPrimitive('an object', value);
 			}
 
 			var keyValuePairs = _elm_lang$core$Native_List.Nil;
@@ -5790,7 +5800,7 @@ function runHelp(decoder, value)
 			return badOneOf(errors);
 
 		case 'fail':
-			return bad;
+			return bad(decoder.msg);
 
 		case 'succeed':
 			return ok(decoder.msg);
@@ -7645,7 +7655,7 @@ var _elm_lang$html$Html_Lazy$lazy3 = _elm_lang$virtual_dom$VirtualDom$lazy3;
 var _elm_lang$html$Html_Lazy$lazy2 = _elm_lang$virtual_dom$VirtualDom$lazy2;
 var _elm_lang$html$Html_Lazy$lazy = _elm_lang$virtual_dom$VirtualDom$lazy;
 
-var _evancz$elm_todomvc$Todo$infoFooter = A2(
+var _user$project$Todo$infoFooter = A2(
 	_elm_lang$html$Html$footer,
 	_elm_lang$core$Native_List.fromArray(
 		[
@@ -7698,7 +7708,7 @@ var _evancz$elm_todomvc$Todo$infoFooter = A2(
 						]))
 				]))
 		]));
-var _evancz$elm_todomvc$Todo$onEnter = F2(
+var _user$project$Todo$onEnter = F2(
 	function (fail, success) {
 		var tagger = function (code) {
 			return _elm_lang$core$Native_Utils.eq(code, 13) ? success : fail;
@@ -7708,25 +7718,25 @@ var _evancz$elm_todomvc$Todo$onEnter = F2(
 			'keyup',
 			A2(_elm_lang$core$Json_Decode$map, tagger, _elm_lang$html$Html_Events$keyCode));
 	});
-var _evancz$elm_todomvc$Todo$newTask = F2(
+var _user$project$Todo$newTask = F2(
 	function (desc, id) {
 		return {description: desc, completed: false, editing: false, id: id, timeCount: 0, counting: false};
 	});
-var _evancz$elm_todomvc$Todo$emptyModel = {
+var _user$project$Todo$emptyModel = {
 	tasks: _elm_lang$core$Native_List.fromArray(
 		[]),
 	visibility: 'All',
 	field: '',
 	uid: 0
 };
-var _evancz$elm_todomvc$Todo$init = function (savedModel) {
+var _user$project$Todo$init = function (savedModel) {
 	return A2(
 		_elm_lang$core$Platform_Cmd_ops['!'],
-		A2(_elm_lang$core$Maybe$withDefault, _evancz$elm_todomvc$Todo$emptyModel, savedModel),
+		A2(_elm_lang$core$Maybe$withDefault, _user$project$Todo$emptyModel, savedModel),
 		_elm_lang$core$Native_List.fromArray(
 			[]));
 };
-var _evancz$elm_todomvc$Todo$setStorage = _elm_lang$core$Native_Platform.outgoingPort(
+var _user$project$Todo$setStorage = _elm_lang$core$Native_Platform.outgoingPort(
 	'setStorage',
 	function (v) {
 		return {
@@ -7739,7 +7749,7 @@ var _evancz$elm_todomvc$Todo$setStorage = _elm_lang$core$Native_Platform.outgoin
 			visibility: v.visibility
 		};
 	});
-var _evancz$elm_todomvc$Todo$withSetStorage = function (_p0) {
+var _user$project$Todo$withSetStorage = function (_p0) {
 	var _p1 = _p0;
 	var _p2 = _p1._0;
 	return {
@@ -7748,17 +7758,17 @@ var _evancz$elm_todomvc$Todo$withSetStorage = function (_p0) {
 		_1: _elm_lang$core$Platform_Cmd$batch(
 			_elm_lang$core$Native_List.fromArray(
 				[
-					_evancz$elm_todomvc$Todo$setStorage(_p2),
+					_user$project$Todo$setStorage(_p2),
 					_p1._1
 				]))
 	};
 };
-var _evancz$elm_todomvc$Todo$focus = _elm_lang$core$Native_Platform.outgoingPort(
+var _user$project$Todo$focus = _elm_lang$core$Native_Platform.outgoingPort(
 	'focus',
 	function (v) {
 		return v;
 	});
-var _evancz$elm_todomvc$Todo$update = F2(
+var _user$project$Todo$update = F2(
 	function (msg, model) {
 		var _p3 = msg;
 		switch (_p3.ctor) {
@@ -7781,7 +7791,7 @@ var _evancz$elm_todomvc$Todo$update = F2(
 								model.tasks,
 								_elm_lang$core$Native_List.fromArray(
 									[
-										A2(_evancz$elm_todomvc$Todo$newTask, model.field, model.uid)
+										A2(_user$project$Todo$newTask, model.field, model.uid)
 									]))
 						}),
 					_elm_lang$core$Native_List.fromArray(
@@ -7810,7 +7820,7 @@ var _evancz$elm_todomvc$Todo$update = F2(
 						}),
 					_elm_lang$core$Native_List.fromArray(
 						[
-							_evancz$elm_todomvc$Todo$focus(
+							_user$project$Todo$focus(
 							A2(
 								_elm_lang$core$Basics_ops['++'],
 								'#todo-',
@@ -7822,7 +7832,9 @@ var _evancz$elm_todomvc$Todo$update = F2(
 						t,
 						{
 							counting: _elm_lang$core$Basics$not(t.counting)
-						}) : t;
+						}) : _elm_lang$core$Native_Utils.update(
+						t,
+						{counting: false});
 				};
 				return A2(
 					_elm_lang$core$Platform_Cmd_ops['!'],
@@ -7936,31 +7948,31 @@ var _evancz$elm_todomvc$Todo$update = F2(
 						[]));
 		}
 	});
-var _evancz$elm_todomvc$Todo$Model = F4(
+var _user$project$Todo$Model = F4(
 	function (a, b, c, d) {
 		return {tasks: a, field: b, uid: c, visibility: d};
 	});
-var _evancz$elm_todomvc$Todo$Task = F6(
+var _user$project$Todo$Task = F6(
 	function (a, b, c, d, e, f) {
 		return {description: a, completed: b, editing: c, id: d, timeCount: e, counting: f};
 	});
-var _evancz$elm_todomvc$Todo$Tick = function (a) {
+var _user$project$Todo$Tick = function (a) {
 	return {ctor: 'Tick', _0: a};
 };
-var _evancz$elm_todomvc$Todo$subscriptions = function (model) {
-	return A2(_elm_lang$core$Time$every, _elm_lang$core$Time$second, _evancz$elm_todomvc$Todo$Tick);
+var _user$project$Todo$subscriptions = function (model) {
+	return A2(_elm_lang$core$Time$every, _elm_lang$core$Time$second, _user$project$Todo$Tick);
 };
-var _evancz$elm_todomvc$Todo$ChangeVisibility = function (a) {
+var _user$project$Todo$ChangeVisibility = function (a) {
 	return {ctor: 'ChangeVisibility', _0: a};
 };
-var _evancz$elm_todomvc$Todo$visibilitySwap = F3(
+var _user$project$Todo$visibilitySwap = F3(
 	function (uri, visibility, actualVisibility) {
 		return A2(
 			_elm_lang$html$Html$li,
 			_elm_lang$core$Native_List.fromArray(
 				[
 					_elm_lang$html$Html_Events$onClick(
-					_evancz$elm_todomvc$Todo$ChangeVisibility(visibility))
+					_user$project$Todo$ChangeVisibility(visibility))
 				]),
 			_elm_lang$core$Native_List.fromArray(
 				[
@@ -7985,15 +7997,15 @@ var _evancz$elm_todomvc$Todo$visibilitySwap = F3(
 						]))
 				]));
 	});
-var _evancz$elm_todomvc$Todo$CheckAll = function (a) {
+var _user$project$Todo$CheckAll = function (a) {
 	return {ctor: 'CheckAll', _0: a};
 };
-var _evancz$elm_todomvc$Todo$Check = F2(
+var _user$project$Todo$Check = F2(
 	function (a, b) {
 		return {ctor: 'Check', _0: a, _1: b};
 	});
-var _evancz$elm_todomvc$Todo$DeleteComplete = {ctor: 'DeleteComplete'};
-var _evancz$elm_todomvc$Todo$controls = F2(
+var _user$project$Todo$DeleteComplete = {ctor: 'DeleteComplete'};
+var _user$project$Todo$controls = F2(
 	function (visibility, tasks) {
 		var tasksCompleted = _elm_lang$core$List$length(
 			A2(
@@ -8042,11 +8054,11 @@ var _evancz$elm_todomvc$Todo$controls = F2(
 						]),
 					_elm_lang$core$Native_List.fromArray(
 						[
-							A3(_evancz$elm_todomvc$Todo$visibilitySwap, '#/', 'All', visibility),
+							A3(_user$project$Todo$visibilitySwap, '#/', 'All', visibility),
 							_elm_lang$html$Html$text(' '),
-							A3(_evancz$elm_todomvc$Todo$visibilitySwap, '#/active', 'Active', visibility),
+							A3(_user$project$Todo$visibilitySwap, '#/active', 'Active', visibility),
 							_elm_lang$html$Html$text(' '),
-							A3(_evancz$elm_todomvc$Todo$visibilitySwap, '#/completed', 'Completed', visibility)
+							A3(_user$project$Todo$visibilitySwap, '#/completed', 'Completed', visibility)
 						])),
 					A2(
 					_elm_lang$html$Html$button,
@@ -8056,7 +8068,7 @@ var _evancz$elm_todomvc$Todo$controls = F2(
 							_elm_lang$html$Html_Attributes$id('clear-completed'),
 							_elm_lang$html$Html_Attributes$hidden(
 							_elm_lang$core$Native_Utils.eq(tasksCompleted, 0)),
-							_elm_lang$html$Html_Events$onClick(_evancz$elm_todomvc$Todo$DeleteComplete)
+							_elm_lang$html$Html_Events$onClick(_user$project$Todo$DeleteComplete)
 						]),
 					_elm_lang$core$Native_List.fromArray(
 						[
@@ -8071,26 +8083,26 @@ var _evancz$elm_todomvc$Todo$controls = F2(
 						]))
 				]));
 	});
-var _evancz$elm_todomvc$Todo$Delete = function (a) {
+var _user$project$Todo$Delete = function (a) {
 	return {ctor: 'Delete', _0: a};
 };
-var _evancz$elm_todomvc$Todo$Add = {ctor: 'Add'};
-var _evancz$elm_todomvc$Todo$UpdateTask = F2(
+var _user$project$Todo$Add = {ctor: 'Add'};
+var _user$project$Todo$UpdateTask = F2(
 	function (a, b) {
 		return {ctor: 'UpdateTask', _0: a, _1: b};
 	});
-var _evancz$elm_todomvc$Todo$TimeTask = function (a) {
+var _user$project$Todo$TimeTask = function (a) {
 	return {ctor: 'TimeTask', _0: a};
 };
-var _evancz$elm_todomvc$Todo$EditingTask = F2(
+var _user$project$Todo$EditingTask = F2(
 	function (a, b) {
 		return {ctor: 'EditingTask', _0: a, _1: b};
 	});
-var _evancz$elm_todomvc$Todo$UpdateField = function (a) {
+var _user$project$Todo$UpdateField = function (a) {
 	return {ctor: 'UpdateField', _0: a};
 };
-var _evancz$elm_todomvc$Todo$NoOp = {ctor: 'NoOp'};
-var _evancz$elm_todomvc$Todo$taskEntry = function (task) {
+var _user$project$Todo$NoOp = {ctor: 'NoOp'};
+var _user$project$Todo$taskEntry = function (task) {
 	return A2(
 		_elm_lang$html$Html$header,
 		_elm_lang$core$Native_List.fromArray(
@@ -8119,14 +8131,14 @@ var _evancz$elm_todomvc$Todo$taskEntry = function (task) {
 						A2(
 						_elm_lang$html$Html_Events$on,
 						'input',
-						A2(_elm_lang$core$Json_Decode$map, _evancz$elm_todomvc$Todo$UpdateField, _elm_lang$html$Html_Events$targetValue)),
-						A2(_evancz$elm_todomvc$Todo$onEnter, _evancz$elm_todomvc$Todo$NoOp, _evancz$elm_todomvc$Todo$Add)
+						A2(_elm_lang$core$Json_Decode$map, _user$project$Todo$UpdateField, _elm_lang$html$Html_Events$targetValue)),
+						A2(_user$project$Todo$onEnter, _user$project$Todo$NoOp, _user$project$Todo$Add)
 					]),
 				_elm_lang$core$Native_List.fromArray(
 					[]))
 			]));
 };
-var _evancz$elm_todomvc$Todo$todoItem = function (todo) {
+var _user$project$Todo$todoItem = function (todo) {
 	var toTimeStamp = function (seconds) {
 		var toStr = function (i) {
 			var s = _elm_lang$core$Basics$toString(i);
@@ -8180,7 +8192,7 @@ var _evancz$elm_todomvc$Todo$todoItem = function (todo) {
 								_elm_lang$html$Html_Attributes$checked(todo.completed),
 								_elm_lang$html$Html_Events$onClick(
 								A2(
-									_evancz$elm_todomvc$Todo$Check,
+									_user$project$Todo$Check,
 									todo.id,
 									_elm_lang$core$Basics$not(todo.completed)))
 							]),
@@ -8191,7 +8203,7 @@ var _evancz$elm_todomvc$Todo$todoItem = function (todo) {
 						_elm_lang$core$Native_List.fromArray(
 							[
 								_elm_lang$html$Html_Events$onDoubleClick(
-								A2(_evancz$elm_todomvc$Todo$EditingTask, todo.id, true)),
+								A2(_user$project$Todo$EditingTask, todo.id, true)),
 								_elm_lang$html$Html_Attributes$class('description')
 							]),
 						_elm_lang$core$Native_List.fromArray(
@@ -8203,7 +8215,7 @@ var _evancz$elm_todomvc$Todo$todoItem = function (todo) {
 						_elm_lang$core$Native_List.fromArray(
 							[
 								_elm_lang$html$Html_Events$onClick(
-								_evancz$elm_todomvc$Todo$TimeTask(todo.id)),
+								_user$project$Todo$TimeTask(todo.id)),
 								_elm_lang$html$Html_Attributes$class(
 								A2(
 									_elm_lang$core$Basics_ops['++'],
@@ -8221,7 +8233,7 @@ var _evancz$elm_todomvc$Todo$todoItem = function (todo) {
 							[
 								_elm_lang$html$Html_Attributes$class('destroy'),
 								_elm_lang$html$Html_Events$onClick(
-								_evancz$elm_todomvc$Todo$Delete(todo.id))
+								_user$project$Todo$Delete(todo.id))
 							]),
 						_elm_lang$core$Native_List.fromArray(
 							[]))
@@ -8243,20 +8255,20 @@ var _evancz$elm_todomvc$Todo$todoItem = function (todo) {
 						'input',
 						A2(
 							_elm_lang$core$Json_Decode$map,
-							_evancz$elm_todomvc$Todo$UpdateTask(todo.id),
+							_user$project$Todo$UpdateTask(todo.id),
 							_elm_lang$html$Html_Events$targetValue)),
 						_elm_lang$html$Html_Events$onBlur(
-						A2(_evancz$elm_todomvc$Todo$EditingTask, todo.id, false)),
+						A2(_user$project$Todo$EditingTask, todo.id, false)),
 						A2(
-						_evancz$elm_todomvc$Todo$onEnter,
-						_evancz$elm_todomvc$Todo$NoOp,
-						A2(_evancz$elm_todomvc$Todo$EditingTask, todo.id, false))
+						_user$project$Todo$onEnter,
+						_user$project$Todo$NoOp,
+						A2(_user$project$Todo$EditingTask, todo.id, false))
 					]),
 				_elm_lang$core$Native_List.fromArray(
 					[]))
 			]));
 };
-var _evancz$elm_todomvc$Todo$taskList = F2(
+var _user$project$Todo$taskList = F2(
 	function (visibility, tasks) {
 		var cssVisibility = _elm_lang$core$List$isEmpty(tasks) ? 'hidden' : 'visible';
 		var allCompleted = A2(
@@ -8298,7 +8310,7 @@ var _evancz$elm_todomvc$Todo$taskList = F2(
 							_elm_lang$html$Html_Attributes$name('toggle'),
 							_elm_lang$html$Html_Attributes$checked(allCompleted),
 							_elm_lang$html$Html_Events$onClick(
-							_evancz$elm_todomvc$Todo$CheckAll(
+							_user$project$Todo$CheckAll(
 								_elm_lang$core$Basics$not(allCompleted)))
 						]),
 					_elm_lang$core$Native_List.fromArray(
@@ -8321,11 +8333,11 @@ var _evancz$elm_todomvc$Todo$taskList = F2(
 						]),
 					A2(
 						_elm_lang$core$List$map,
-						_evancz$elm_todomvc$Todo$todoItem,
+						_user$project$Todo$todoItem,
 						A2(_elm_lang$core$List$filter, isVisible, tasks)))
 				]));
 	});
-var _evancz$elm_todomvc$Todo$view = function (model) {
+var _user$project$Todo$view = function (model) {
 	return A2(
 		_elm_lang$html$Html$div,
 		_elm_lang$core$Native_List.fromArray(
@@ -8347,24 +8359,24 @@ var _evancz$elm_todomvc$Todo$view = function (model) {
 					]),
 				_elm_lang$core$Native_List.fromArray(
 					[
-						A2(_elm_lang$html$Html_Lazy$lazy, _evancz$elm_todomvc$Todo$taskEntry, model.field),
-						A3(_elm_lang$html$Html_Lazy$lazy2, _evancz$elm_todomvc$Todo$taskList, model.visibility, model.tasks),
-						A3(_elm_lang$html$Html_Lazy$lazy2, _evancz$elm_todomvc$Todo$controls, model.visibility, model.tasks)
+						A2(_elm_lang$html$Html_Lazy$lazy, _user$project$Todo$taskEntry, model.field),
+						A3(_elm_lang$html$Html_Lazy$lazy2, _user$project$Todo$taskList, model.visibility, model.tasks),
+						A3(_elm_lang$html$Html_Lazy$lazy2, _user$project$Todo$controls, model.visibility, model.tasks)
 					])),
-				_evancz$elm_todomvc$Todo$infoFooter
+				_user$project$Todo$infoFooter
 			]));
 };
-var _evancz$elm_todomvc$Todo$main = {
+var _user$project$Todo$main = {
 	main: _elm_lang$html$Html_App$programWithFlags(
 		{
-			init: _evancz$elm_todomvc$Todo$init,
-			view: _evancz$elm_todomvc$Todo$view,
+			init: _user$project$Todo$init,
+			view: _user$project$Todo$view,
 			update: F2(
 				function (msg, model) {
-					return _evancz$elm_todomvc$Todo$withSetStorage(
-						A2(_evancz$elm_todomvc$Todo$update, msg, model));
+					return _user$project$Todo$withSetStorage(
+						A2(_user$project$Todo$update, msg, model));
 				}),
-			subscriptions: _evancz$elm_todomvc$Todo$subscriptions
+			subscriptions: _user$project$Todo$subscriptions
 		}),
 	flags: _elm_lang$core$Json_Decode$oneOf(
 		_elm_lang$core$Native_List.fromArray(
@@ -8435,7 +8447,7 @@ var _evancz$elm_todomvc$Todo$main = {
 
 var Elm = {};
 Elm['Todo'] = Elm['Todo'] || {};
-_elm_lang$core$Native_Platform.addPublicModule(Elm['Todo'], 'Todo', typeof _evancz$elm_todomvc$Todo$main === 'undefined' ? null : _evancz$elm_todomvc$Todo$main);
+_elm_lang$core$Native_Platform.addPublicModule(Elm['Todo'], 'Todo', typeof _user$project$Todo$main === 'undefined' ? null : _user$project$Todo$main);
 
 if (typeof define === "function" && define['amd'])
 {

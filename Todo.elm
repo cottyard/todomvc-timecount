@@ -146,7 +146,9 @@ update msg model =
     TimeTask id ->
       let
         updateTask t = 
-          if t.id == id then { t | counting = not t.counting } else t
+          if t.id == id 
+          then { t | counting = not t.counting } 
+          else { t | counting = False }
       in
         { model | tasks = List.map updateTask model.tasks }
           ! []
