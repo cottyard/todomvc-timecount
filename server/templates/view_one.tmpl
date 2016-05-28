@@ -1,0 +1,26 @@
+<!doctype html>
+<title>View Client {{ name }} </title>
+<body>
+  <link rel="stylesheet" type="text/css" href="/static/table_style.css">
+  <div class="table-title">
+    <h3>{{ name }}'s Tasks</h3>
+  </div>
+  <table class="table-fill"><tbody>
+    <thead>
+      <tr>
+        <th>Task</th>
+        <th>Time Used</th>
+        <th>Completed</th>    
+        <th>Working On</th>
+      </tr>
+    </thead>
+  {% for task in tasks %}
+    <tr>
+      <td>{{ task.description }}</td>
+      <td class="text-center">{{ task.timeCount // 3600 }} h {{ task.timeCount % 3600 // 60 }} m</td>
+      <td class="text-center">{{ "✓" if task.completed else "" }}</td>    
+      <td class="text-center">{{ "✓" if task.counting else "" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody></table>
+</body>

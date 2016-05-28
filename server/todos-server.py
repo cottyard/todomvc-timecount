@@ -3,6 +3,7 @@ from flask import (
     redirect, request, render_template)
 import socket
 import os
+import json
 
 
 app = Flask(__name__, static_url_path='')
@@ -30,7 +31,9 @@ def view():
 
 @app.route('/view/<path:client>')
 def view_client(client):
-    return send_from_directory('data', client + '.json')
+    with open('data/%s.json' % client, 'r') as client_data:    
+        tasks = json.load(client_data)
+    return render_template('view_one.tmpl', name=client, tasks=tasks)
 
 def get_client_name():
    return socket.gethostbyaddr(request.remote_addr)[0]

@@ -4,6 +4,7 @@ Added a time-count feature and a server to view client status.
 
 HOW TO DEPLOY
 ===
+1. Install python and the [elm platform](http://elm-lang.org/install)
 1. Create a folder hierarchy like this:
      - server
        - *todos-server.py* 

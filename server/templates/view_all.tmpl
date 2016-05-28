@@ -2,7 +2,7 @@
 <title>View All Clients</title>
 <body>
   <ul>
-  {% for client in clients recursive %}
+  {% for client in clients %}
       <li><a href="view/{{ client }}">{{ client }}</a>
   {% endfor %}
   </ul>
