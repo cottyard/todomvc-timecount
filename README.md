@@ -13,6 +13,9 @@ HOW TO DEPLOY
          - *elm.js*
          - *style.css*
        - data
+       - templates
+         - view_all.tmpl
+         - view_one.tmpl
 1. In *elm.js*, set the variable `todomvc_server_url` to your server url
 2. Run `elm-make Todo.elm --output elm.js` to generate the new *elm.js* and replace the old one
 2. In *todo-server.py*, set the arguments of `app.run()` to your host and port
