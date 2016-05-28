@@ -6338,11 +6338,24 @@ function render(vNode, eventNode)
 			return render(vNode.node, eventNode);
 
 		case 'tagger':
+			var subNode = vNode.node;
+			var tagger = vNode.tagger;
+		
+			while (subNode.type === 'tagger')
+			{
+				typeof tagger !== 'object'
+					? tagger = [tagger, subNode.tagger]
+					: tagger.push(subNode.tagger);
+
+				subNode = subNode.node;
+			}
+            
 			var subEventRoot = {
-				tagger: vNode.tagger,
+				tagger: tagger,
 				parent: eventNode
 			};
-			var domNode = render(vNode.node, subEventRoot);
+			
+			var domNode = render(subNode, subEventRoot);
 			domNode.elm_event_node_ref = subEventRoot;
 			return domNode;
 
@@ -6437,6 +6450,7 @@ function applyEvents(domNode, eventNode, events)
 		if (typeof value === 'undefined')
 		{
 			domNode.removeEventListener(key, handler);
+			allHandlers[key] = undefined;
 		}
 		else if (typeof handler === 'undefined')
 		{
@@ -6752,10 +6766,7 @@ function diffFacts(a, b, category)
 				(category === STYLE_KEY)
 					? ''
 					:
-				(category === EVENT_KEY)
-					? null
-					:
-				(category === ATTR_KEY)
+				(category === EVENT_KEY || category === ATTR_KEY)
 					? undefined
 					:
 				{ namespace: a[aKey].namespace, value: undefined };
@@ -6870,7 +6881,14 @@ function addDomNodesHelp(domNode, vNode, patches, i, low, high, eventNode)
 	switch (vNode.type)
 	{
 		case 'tagger':
-			return addDomNodesHelp(domNode, vNode.node, patches, i, low + 1, high, domNode.elm_event_node_ref);
+			var subNode = vNode.node;
+            
+			while (subNode.type === "tagger")
+			{
+				subNode = subNode.node;
+			}
+            
+			return addDomNodesHelp(domNode, subNode, patches, i, low + 1, high, domNode.elm_event_node_ref);
 
 		case 'node':
 			var vChildren = vNode.children;
@@ -6982,10 +7000,9 @@ function redraw(domNode, vNode, eventNode)
 	var parentNode = domNode.parentNode;
 	var newNode = render(vNode, eventNode);
 
-	var ref = domNode.elm_event_node_ref
-	if (typeof ref !== 'undefined')
+	if (typeof newNode.elm_event_node_ref === 'undefined')
 	{
-		newNode.elm_event_node_ref = ref;
+		newNode.elm_event_node_ref = domNode.elm_event_node_ref;
 	}
 
 	if (parentNode && newNode !== domNode)
@@ -7655,6 +7672,364 @@ var _elm_lang$html$Html_Lazy$lazy3 = _elm_lang$virtual_dom$VirtualDom$lazy3;
 var _elm_lang$html$Html_Lazy$lazy2 = _elm_lang$virtual_dom$VirtualDom$lazy2;
 var _elm_lang$html$Html_Lazy$lazy = _elm_lang$virtual_dom$VirtualDom$lazy;
 
+//import Dict, List, Maybe, Native.Scheduler //
+
+var _evancz$elm_http$Native_Http = function() {
+
+function send(settings, request)
+{
+	return _elm_lang$core$Native_Scheduler.nativeBinding(function(callback) {
+		var req = new XMLHttpRequest();
+
+		// start
+		if (settings.onStart.ctor === 'Just')
+		{
+			req.addEventListener('loadStart', function() {
+				var task = settings.onStart._0;
+				_elm_lang$core$Native_Scheduler.rawSpawn(task);
+			});
+		}
+
+		// progress
+		if (settings.onProgress.ctor === 'Just')
+		{
+			req.addEventListener('progress', function(event) {
+				var progress = !event.lengthComputable
+					? _elm_lang$core$Maybe$Nothing
+					: _elm_lang$core$Maybe$Just({
+						loaded: event.loaded,
+						total: event.total
+					});
+				var task = settings.onProgress._0(progress);
+				_elm_lang$core$Native_Scheduler.rawSpawn(task);
+			});
+		}
+
+		// end
+		req.addEventListener('error', function() {
+			return callback(_elm_lang$core$Native_Scheduler.fail({ ctor: 'RawNetworkError' }));
+		});
+
+		req.addEventListener('timeout', function() {
+			return callback(_elm_lang$core$Native_Scheduler.fail({ ctor: 'RawTimeout' }));
+		});
+
+		req.addEventListener('load', function() {
+			return callback(_elm_lang$core$Native_Scheduler.succeed(toResponse(req)));
+		});
+
+		req.open(request.verb, request.url, true);
+
+		// set all the headers
+		function setHeader(pair) {
+			req.setRequestHeader(pair._0, pair._1);
+		}
+		A2(_elm_lang$core$List$map, setHeader, request.headers);
+
+		// set the timeout
+		req.timeout = settings.timeout;
+
+		// enable this withCredentials thing
+		req.withCredentials = settings.withCredentials;
+
+		// ask for a specific MIME type for the response
+		if (settings.desiredResponseType.ctor === 'Just')
+		{
+			req.overrideMimeType(settings.desiredResponseType._0);
+		}
+
+		// actuall send the request
+		if(request.body.ctor === "BodyFormData")
+		{
+			req.send(request.body.formData)
+		}
+		else
+		{
+			req.send(request.body._0);
+		}
+
+		return function() {
+			req.abort();
+		};
+	});
+}
+
+
+// deal with responses
+
+function toResponse(req)
+{
+	var tag = req.responseType === 'blob' ? 'Blob' : 'Text'
+	var response = tag === 'Blob' ? req.response : req.responseText;
+	return {
+		status: req.status,
+		statusText: req.statusText,
+		headers: parseHeaders(req.getAllResponseHeaders()),
+		url: req.responseURL,
+		value: { ctor: tag, _0: response }
+	};
+}
+
+
+function parseHeaders(rawHeaders)
+{
+	var headers = _elm_lang$core$Dict$empty;
+
+	if (!rawHeaders)
+	{
+		return headers;
+	}
+
+	var headerPairs = rawHeaders.split('\u000d\u000a');
+	for (var i = headerPairs.length; i--; )
+	{
+		var headerPair = headerPairs[i];
+		var index = headerPair.indexOf('\u003a\u0020');
+		if (index > 0)
+		{
+			var key = headerPair.substring(0, index);
+			var value = headerPair.substring(index + 2);
+
+			headers = A3(_elm_lang$core$Dict$update, key, function(oldValue) {
+				if (oldValue.ctor === 'Just')
+				{
+					return _elm_lang$core$Maybe$Just(value + ', ' + oldValue._0);
+				}
+				return _elm_lang$core$Maybe$Just(value);
+			}, headers);
+		}
+	}
+
+	return headers;
+}
+
+
+function multipart(dataList)
+{
+	var formData = new FormData();
+
+	while (dataList.ctor !== '[]')
+	{
+		var data = dataList._0;
+		if (data.ctor === 'StringData')
+		{
+			formData.append(data._0, data._1);
+		}
+		else
+		{
+			var fileName = data._1.ctor === 'Nothing'
+				? undefined
+				: data._1._0;
+			formData.append(data._0, data._2, fileName);
+		}
+		dataList = dataList._1;
+	}
+
+	return { ctor: 'BodyFormData', formData: formData };
+}
+
+
+function uriEncode(string)
+{
+	return encodeURIComponent(string);
+}
+
+function uriDecode(string)
+{
+	return decodeURIComponent(string);
+}
+
+return {
+	send: F2(send),
+	multipart: multipart,
+	uriEncode: uriEncode,
+	uriDecode: uriDecode
+};
+
+}();
+
+var _evancz$elm_http$Http$send = _evancz$elm_http$Native_Http.send;
+var _evancz$elm_http$Http$defaultSettings = {timeout: 0, onStart: _elm_lang$core$Maybe$Nothing, onProgress: _elm_lang$core$Maybe$Nothing, desiredResponseType: _elm_lang$core$Maybe$Nothing, withCredentials: false};
+var _evancz$elm_http$Http$multipart = _evancz$elm_http$Native_Http.multipart;
+var _evancz$elm_http$Http$uriDecode = _evancz$elm_http$Native_Http.uriDecode;
+var _evancz$elm_http$Http$uriEncode = _evancz$elm_http$Native_Http.uriEncode;
+var _evancz$elm_http$Http$queryEscape = function (string) {
+	return A2(
+		_elm_lang$core$String$join,
+		'+',
+		A2(
+			_elm_lang$core$String$split,
+			'%20',
+			_evancz$elm_http$Http$uriEncode(string)));
+};
+var _evancz$elm_http$Http$queryPair = function (_p0) {
+	var _p1 = _p0;
+	return A2(
+		_elm_lang$core$Basics_ops['++'],
+		_evancz$elm_http$Http$queryEscape(_p1._0),
+		A2(
+			_elm_lang$core$Basics_ops['++'],
+			'=',
+			_evancz$elm_http$Http$queryEscape(_p1._1)));
+};
+var _evancz$elm_http$Http$url = F2(
+	function (baseUrl, args) {
+		var _p2 = args;
+		if (_p2.ctor === '[]') {
+			return baseUrl;
+		} else {
+			return A2(
+				_elm_lang$core$Basics_ops['++'],
+				baseUrl,
+				A2(
+					_elm_lang$core$Basics_ops['++'],
+					'?',
+					A2(
+						_elm_lang$core$String$join,
+						'&',
+						A2(_elm_lang$core$List$map, _evancz$elm_http$Http$queryPair, args))));
+		}
+	});
+var _evancz$elm_http$Http$Request = F4(
+	function (a, b, c, d) {
+		return {verb: a, headers: b, url: c, body: d};
+	});
+var _evancz$elm_http$Http$Settings = F5(
+	function (a, b, c, d, e) {
+		return {timeout: a, onStart: b, onProgress: c, desiredResponseType: d, withCredentials: e};
+	});
+var _evancz$elm_http$Http$Response = F5(
+	function (a, b, c, d, e) {
+		return {status: a, statusText: b, headers: c, url: d, value: e};
+	});
+var _evancz$elm_http$Http$TODO_implement_blob_in_another_library = {ctor: 'TODO_implement_blob_in_another_library'};
+var _evancz$elm_http$Http$TODO_implement_file_in_another_library = {ctor: 'TODO_implement_file_in_another_library'};
+var _evancz$elm_http$Http$BodyBlob = function (a) {
+	return {ctor: 'BodyBlob', _0: a};
+};
+var _evancz$elm_http$Http$BodyFormData = {ctor: 'BodyFormData'};
+var _evancz$elm_http$Http$ArrayBuffer = {ctor: 'ArrayBuffer'};
+var _evancz$elm_http$Http$BodyString = function (a) {
+	return {ctor: 'BodyString', _0: a};
+};
+var _evancz$elm_http$Http$string = _evancz$elm_http$Http$BodyString;
+var _evancz$elm_http$Http$Empty = {ctor: 'Empty'};
+var _evancz$elm_http$Http$empty = _evancz$elm_http$Http$Empty;
+var _evancz$elm_http$Http$FileData = F3(
+	function (a, b, c) {
+		return {ctor: 'FileData', _0: a, _1: b, _2: c};
+	});
+var _evancz$elm_http$Http$BlobData = F3(
+	function (a, b, c) {
+		return {ctor: 'BlobData', _0: a, _1: b, _2: c};
+	});
+var _evancz$elm_http$Http$blobData = _evancz$elm_http$Http$BlobData;
+var _evancz$elm_http$Http$StringData = F2(
+	function (a, b) {
+		return {ctor: 'StringData', _0: a, _1: b};
+	});
+var _evancz$elm_http$Http$stringData = _evancz$elm_http$Http$StringData;
+var _evancz$elm_http$Http$Blob = function (a) {
+	return {ctor: 'Blob', _0: a};
+};
+var _evancz$elm_http$Http$Text = function (a) {
+	return {ctor: 'Text', _0: a};
+};
+var _evancz$elm_http$Http$RawNetworkError = {ctor: 'RawNetworkError'};
+var _evancz$elm_http$Http$RawTimeout = {ctor: 'RawTimeout'};
+var _evancz$elm_http$Http$BadResponse = F2(
+	function (a, b) {
+		return {ctor: 'BadResponse', _0: a, _1: b};
+	});
+var _evancz$elm_http$Http$UnexpectedPayload = function (a) {
+	return {ctor: 'UnexpectedPayload', _0: a};
+};
+var _evancz$elm_http$Http$handleResponse = F2(
+	function (handle, response) {
+		if ((_elm_lang$core$Native_Utils.cmp(200, response.status) < 1) && (_elm_lang$core$Native_Utils.cmp(response.status, 300) < 0)) {
+			var _p3 = response.value;
+			if (_p3.ctor === 'Text') {
+				return handle(_p3._0);
+			} else {
+				return _elm_lang$core$Task$fail(
+					_evancz$elm_http$Http$UnexpectedPayload('Response body is a blob, expecting a string.'));
+			}
+		} else {
+			return _elm_lang$core$Task$fail(
+				A2(_evancz$elm_http$Http$BadResponse, response.status, response.statusText));
+		}
+	});
+var _evancz$elm_http$Http$NetworkError = {ctor: 'NetworkError'};
+var _evancz$elm_http$Http$Timeout = {ctor: 'Timeout'};
+var _evancz$elm_http$Http$promoteError = function (rawError) {
+	var _p4 = rawError;
+	if (_p4.ctor === 'RawTimeout') {
+		return _evancz$elm_http$Http$Timeout;
+	} else {
+		return _evancz$elm_http$Http$NetworkError;
+	}
+};
+var _evancz$elm_http$Http$getString = function (url) {
+	var request = {
+		verb: 'GET',
+		headers: _elm_lang$core$Native_List.fromArray(
+			[]),
+		url: url,
+		body: _evancz$elm_http$Http$empty
+	};
+	return A2(
+		_elm_lang$core$Task$andThen,
+		A2(
+			_elm_lang$core$Task$mapError,
+			_evancz$elm_http$Http$promoteError,
+			A2(_evancz$elm_http$Http$send, _evancz$elm_http$Http$defaultSettings, request)),
+		_evancz$elm_http$Http$handleResponse(_elm_lang$core$Task$succeed));
+};
+var _evancz$elm_http$Http$fromJson = F2(
+	function (decoder, response) {
+		var decode = function (str) {
+			var _p5 = A2(_elm_lang$core$Json_Decode$decodeString, decoder, str);
+			if (_p5.ctor === 'Ok') {
+				return _elm_lang$core$Task$succeed(_p5._0);
+			} else {
+				return _elm_lang$core$Task$fail(
+					_evancz$elm_http$Http$UnexpectedPayload(_p5._0));
+			}
+		};
+		return A2(
+			_elm_lang$core$Task$andThen,
+			A2(_elm_lang$core$Task$mapError, _evancz$elm_http$Http$promoteError, response),
+			_evancz$elm_http$Http$handleResponse(decode));
+	});
+var _evancz$elm_http$Http$get = F2(
+	function (decoder, url) {
+		var request = {
+			verb: 'GET',
+			headers: _elm_lang$core$Native_List.fromArray(
+				[]),
+			url: url,
+			body: _evancz$elm_http$Http$empty
+		};
+		return A2(
+			_evancz$elm_http$Http$fromJson,
+			decoder,
+			A2(_evancz$elm_http$Http$send, _evancz$elm_http$Http$defaultSettings, request));
+	});
+var _evancz$elm_http$Http$post = F3(
+	function (decoder, url, body) {
+		var request = {
+			verb: 'POST',
+			headers: _elm_lang$core$Native_List.fromArray(
+				[]),
+			url: url,
+			body: body
+		};
+		return A2(
+			_evancz$elm_http$Http$fromJson,
+			decoder,
+			A2(_evancz$elm_http$Http$send, _evancz$elm_http$Http$defaultSettings, request));
+	});
+
 var _user$project$Todo$infoFooter = A2(
 	_elm_lang$html$Html$footer,
 	_elm_lang$core$Native_List.fromArray(
@@ -7669,7 +8044,7 @@ var _user$project$Todo$infoFooter = A2(
 				[]),
 			_elm_lang$core$Native_List.fromArray(
 				[
-					_elm_lang$html$Html$text('Double-click to edit a todo')
+					_elm_lang$html$Html$text('Double-click to edit a todo | Click on the time to toggle counter')
 				])),
 			A2(
 			_elm_lang$html$Html$p,
@@ -7687,7 +8062,8 @@ var _user$project$Todo$infoFooter = A2(
 					_elm_lang$core$Native_List.fromArray(
 						[
 							_elm_lang$html$Html$text('Evan Czaplicki')
-						]))
+						])),
+					_elm_lang$html$Html$text(' | Enchanced by Chang')
 				])),
 			A2(
 			_elm_lang$html$Html$p,
@@ -7727,7 +8103,8 @@ var _user$project$Todo$emptyModel = {
 		[]),
 	visibility: 'All',
 	field: '',
-	uid: 0
+	uid: 0,
+	saveTimeCount: 0
 };
 var _user$project$Todo$init = function (savedModel) {
 	return A2(
@@ -7735,6 +8112,36 @@ var _user$project$Todo$init = function (savedModel) {
 		A2(_elm_lang$core$Maybe$withDefault, _user$project$Todo$emptyModel, savedModel),
 		_elm_lang$core$Native_List.fromArray(
 			[]));
+};
+var _user$project$Todo$modelToJson = function (model) {
+	var taskToJson = function (task) {
+		return _elm_lang$core$Json_Encode$object(
+			_elm_lang$core$Native_List.fromArray(
+				[
+					{
+					ctor: '_Tuple2',
+					_0: 'description',
+					_1: _elm_lang$core$Json_Encode$string(task.description)
+				},
+					{
+					ctor: '_Tuple2',
+					_0: 'completed',
+					_1: _elm_lang$core$Json_Encode$bool(task.completed)
+				},
+					{
+					ctor: '_Tuple2',
+					_0: 'timeCount',
+					_1: _elm_lang$core$Json_Encode$int(task.timeCount)
+				},
+					{
+					ctor: '_Tuple2',
+					_0: 'counting',
+					_1: _elm_lang$core$Json_Encode$bool(task.counting)
+				}
+				]));
+	};
+	return _elm_lang$core$Json_Encode$list(
+		A2(_elm_lang$core$List$map, taskToJson, model.tasks));
 };
 var _user$project$Todo$setStorage = _elm_lang$core$Native_Platform.outgoingPort(
 	'setStorage',
@@ -7746,7 +8153,8 @@ var _user$project$Todo$setStorage = _elm_lang$core$Native_Platform.outgoingPort(
 				}),
 			field: v.field,
 			uid: v.uid,
-			visibility: v.visibility
+			visibility: v.visibility,
+			saveTimeCount: v.saveTimeCount
 		};
 	});
 var _user$project$Todo$withSetStorage = function (_p0) {
@@ -7768,11 +8176,50 @@ var _user$project$Todo$focus = _elm_lang$core$Native_Platform.outgoingPort(
 	function (v) {
 		return v;
 	});
+var _user$project$Todo$Model = F5(
+	function (a, b, c, d, e) {
+		return {tasks: a, field: b, uid: c, visibility: d, saveTimeCount: e};
+	});
+var _user$project$Todo$Task = F6(
+	function (a, b, c, d, e, f) {
+		return {description: a, completed: b, editing: c, id: d, timeCount: e, counting: f};
+	});
+var _user$project$Todo$SaveFail = function (a) {
+	return {ctor: 'SaveFail', _0: a};
+};
+var _user$project$Todo$SaveSucceed = {ctor: 'SaveSucceed'};
+var _user$project$Todo$saveModelToServer = function (json) {
+	var url = 'http://localhost:5000/data';
+	return A3(
+		_elm_lang$core$Task$perform,
+		_user$project$Todo$SaveFail,
+		function (_p3) {
+			return _user$project$Todo$SaveSucceed;
+		},
+		A3(
+			_evancz$elm_http$Http$post,
+			_elm_lang$core$Json_Decode$string,
+			url,
+			_evancz$elm_http$Http$string(
+				A2(_elm_lang$core$Json_Encode$encode, 0, json))));
+};
 var _user$project$Todo$update = F2(
 	function (msg, model) {
-		var _p3 = msg;
-		switch (_p3.ctor) {
+		var _p4 = msg;
+		switch (_p4.ctor) {
 			case 'NoOp':
+				return A2(
+					_elm_lang$core$Platform_Cmd_ops['!'],
+					model,
+					_elm_lang$core$Native_List.fromArray(
+						[]));
+			case 'SaveSucceed':
+				return A2(
+					_elm_lang$core$Platform_Cmd_ops['!'],
+					model,
+					_elm_lang$core$Native_List.fromArray(
+						[]));
+			case 'SaveFail':
 				return A2(
 					_elm_lang$core$Platform_Cmd_ops['!'],
 					model,
@@ -7801,15 +8248,15 @@ var _user$project$Todo$update = F2(
 					_elm_lang$core$Platform_Cmd_ops['!'],
 					_elm_lang$core$Native_Utils.update(
 						model,
-						{field: _p3._0}),
+						{field: _p4._0}),
 					_elm_lang$core$Native_List.fromArray(
 						[]));
 			case 'EditingTask':
-				var _p4 = _p3._0;
+				var _p5 = _p4._0;
 				var updateTask = function (t) {
-					return _elm_lang$core$Native_Utils.eq(t.id, _p4) ? _elm_lang$core$Native_Utils.update(
+					return _elm_lang$core$Native_Utils.eq(t.id, _p5) ? _elm_lang$core$Native_Utils.update(
 						t,
-						{editing: _p3._1}) : t;
+						{editing: _p4._1}) : t;
 				};
 				return A2(
 					_elm_lang$core$Platform_Cmd_ops['!'],
@@ -7824,11 +8271,11 @@ var _user$project$Todo$update = F2(
 							A2(
 								_elm_lang$core$Basics_ops['++'],
 								'#todo-',
-								_elm_lang$core$Basics$toString(_p4)))
+								_elm_lang$core$Basics$toString(_p5)))
 						]));
 			case 'TimeTask':
 				var updateTask = function (t) {
-					return _elm_lang$core$Native_Utils.eq(t.id, _p3._0) ? _elm_lang$core$Native_Utils.update(
+					return _elm_lang$core$Native_Utils.eq(t.id, _p4._0) ? _elm_lang$core$Native_Utils.update(
 						t,
 						{
 							counting: _elm_lang$core$Basics$not(t.counting)
@@ -7847,9 +8294,9 @@ var _user$project$Todo$update = F2(
 						[]));
 			case 'UpdateTask':
 				var updateTask = function (t) {
-					return _elm_lang$core$Native_Utils.eq(t.id, _p3._0) ? _elm_lang$core$Native_Utils.update(
+					return _elm_lang$core$Native_Utils.eq(t.id, _p4._0) ? _elm_lang$core$Native_Utils.update(
 						t,
-						{description: _p3._1}) : t;
+						{description: _p4._1}) : t;
 				};
 				return A2(
 					_elm_lang$core$Platform_Cmd_ops['!'],
@@ -7869,7 +8316,7 @@ var _user$project$Todo$update = F2(
 							tasks: A2(
 								_elm_lang$core$List$filter,
 								function (t) {
-									return !_elm_lang$core$Native_Utils.eq(t.id, _p3._0);
+									return !_elm_lang$core$Native_Utils.eq(t.id, _p4._0);
 								},
 								model.tasks)
 						}),
@@ -7883,11 +8330,11 @@ var _user$project$Todo$update = F2(
 						{
 							tasks: A2(
 								_elm_lang$core$List$filter,
-								function (_p5) {
+								function (_p6) {
 									return _elm_lang$core$Basics$not(
 										function (_) {
 											return _.completed;
-										}(_p5));
+										}(_p6));
 								},
 								model.tasks)
 						}),
@@ -7895,9 +8342,9 @@ var _user$project$Todo$update = F2(
 						[]));
 			case 'Check':
 				var updateTask = function (t) {
-					return _elm_lang$core$Native_Utils.eq(t.id, _p3._0) ? _elm_lang$core$Native_Utils.update(
+					return _elm_lang$core$Native_Utils.eq(t.id, _p4._0) ? _elm_lang$core$Native_Utils.update(
 						t,
-						{completed: _p3._1}) : t;
+						{completed: _p4._1}) : t;
 				};
 				return A2(
 					_elm_lang$core$Platform_Cmd_ops['!'],
@@ -7912,7 +8359,7 @@ var _user$project$Todo$update = F2(
 				var updateTask = function (t) {
 					return _elm_lang$core$Native_Utils.update(
 						t,
-						{completed: _p3._0});
+						{completed: _p4._0});
 				};
 				return A2(
 					_elm_lang$core$Platform_Cmd_ops['!'],
@@ -7928,10 +8375,11 @@ var _user$project$Todo$update = F2(
 					_elm_lang$core$Platform_Cmd_ops['!'],
 					_elm_lang$core$Native_Utils.update(
 						model,
-						{visibility: _p3._0}),
+						{visibility: _p4._0}),
 					_elm_lang$core$Native_List.fromArray(
 						[]));
 			default:
+				var saveInterval = 10;
 				var updateTask = function (t) {
 					return t.counting ? _elm_lang$core$Native_Utils.update(
 						t,
@@ -7942,19 +8390,15 @@ var _user$project$Todo$update = F2(
 					_elm_lang$core$Native_Utils.update(
 						model,
 						{
-							tasks: A2(_elm_lang$core$List$map, updateTask, model.tasks)
+							tasks: A2(_elm_lang$core$List$map, updateTask, model.tasks),
+							saveTimeCount: _elm_lang$core$Native_Utils.eq(model.saveTimeCount, saveInterval) ? 0 : (model.saveTimeCount + 1)
 						}),
 					_elm_lang$core$Native_List.fromArray(
-						[]));
+						[
+							_elm_lang$core$Native_Utils.eq(model.saveTimeCount, saveInterval) ? _user$project$Todo$saveModelToServer(
+							_user$project$Todo$modelToJson(model)) : _elm_lang$core$Platform_Cmd$none
+						]));
 		}
-	});
-var _user$project$Todo$Model = F4(
-	function (a, b, c, d) {
-		return {tasks: a, field: b, uid: c, visibility: d};
-	});
-var _user$project$Todo$Task = F6(
-	function (a, b, c, d, e, f) {
-		return {description: a, completed: b, editing: c, id: d, timeCount: e, counting: f};
 	});
 var _user$project$Todo$Tick = function (a) {
 	return {ctor: 'Tick', _0: a};
@@ -8278,8 +8722,8 @@ var _user$project$Todo$taskList = F2(
 			},
 			tasks);
 		var isVisible = function (todo) {
-			var _p6 = visibility;
-			switch (_p6) {
+			var _p7 = visibility;
+			switch (_p7) {
 				case 'Completed':
 					return todo.completed;
 				case 'Active':
@@ -8391,53 +8835,58 @@ var _user$project$Todo$main = {
 					function (field) {
 						return A2(
 							_elm_lang$core$Json_Decode$andThen,
-							A2(
-								_elm_lang$core$Json_Decode_ops[':='],
-								'tasks',
-								_elm_lang$core$Json_Decode$list(
+							A2(_elm_lang$core$Json_Decode_ops[':='], 'saveTimeCount', _elm_lang$core$Json_Decode$int),
+							function (saveTimeCount) {
+								return A2(
+									_elm_lang$core$Json_Decode$andThen,
 									A2(
-										_elm_lang$core$Json_Decode$andThen,
-										A2(_elm_lang$core$Json_Decode_ops[':='], 'completed', _elm_lang$core$Json_Decode$bool),
-										function (completed) {
-											return A2(
+										_elm_lang$core$Json_Decode_ops[':='],
+										'tasks',
+										_elm_lang$core$Json_Decode$list(
+											A2(
 												_elm_lang$core$Json_Decode$andThen,
-												A2(_elm_lang$core$Json_Decode_ops[':='], 'counting', _elm_lang$core$Json_Decode$bool),
-												function (counting) {
+												A2(_elm_lang$core$Json_Decode_ops[':='], 'completed', _elm_lang$core$Json_Decode$bool),
+												function (completed) {
 													return A2(
 														_elm_lang$core$Json_Decode$andThen,
-														A2(_elm_lang$core$Json_Decode_ops[':='], 'description', _elm_lang$core$Json_Decode$string),
-														function (description) {
+														A2(_elm_lang$core$Json_Decode_ops[':='], 'counting', _elm_lang$core$Json_Decode$bool),
+														function (counting) {
 															return A2(
 																_elm_lang$core$Json_Decode$andThen,
-																A2(_elm_lang$core$Json_Decode_ops[':='], 'editing', _elm_lang$core$Json_Decode$bool),
-																function (editing) {
+																A2(_elm_lang$core$Json_Decode_ops[':='], 'description', _elm_lang$core$Json_Decode$string),
+																function (description) {
 																	return A2(
 																		_elm_lang$core$Json_Decode$andThen,
-																		A2(_elm_lang$core$Json_Decode_ops[':='], 'id', _elm_lang$core$Json_Decode$int),
-																		function (id) {
+																		A2(_elm_lang$core$Json_Decode_ops[':='], 'editing', _elm_lang$core$Json_Decode$bool),
+																		function (editing) {
 																			return A2(
 																				_elm_lang$core$Json_Decode$andThen,
-																				A2(_elm_lang$core$Json_Decode_ops[':='], 'timeCount', _elm_lang$core$Json_Decode$int),
-																				function (timeCount) {
-																					return _elm_lang$core$Json_Decode$succeed(
-																						{completed: completed, counting: counting, description: description, editing: editing, id: id, timeCount: timeCount});
+																				A2(_elm_lang$core$Json_Decode_ops[':='], 'id', _elm_lang$core$Json_Decode$int),
+																				function (id) {
+																					return A2(
+																						_elm_lang$core$Json_Decode$andThen,
+																						A2(_elm_lang$core$Json_Decode_ops[':='], 'timeCount', _elm_lang$core$Json_Decode$int),
+																						function (timeCount) {
+																							return _elm_lang$core$Json_Decode$succeed(
+																								{completed: completed, counting: counting, description: description, editing: editing, id: id, timeCount: timeCount});
+																						});
 																				});
 																		});
 																});
 														});
-												});
-										}))),
-							function (tasks) {
-								return A2(
-									_elm_lang$core$Json_Decode$andThen,
-									A2(_elm_lang$core$Json_Decode_ops[':='], 'uid', _elm_lang$core$Json_Decode$int),
-									function (uid) {
+												}))),
+									function (tasks) {
 										return A2(
 											_elm_lang$core$Json_Decode$andThen,
-											A2(_elm_lang$core$Json_Decode_ops[':='], 'visibility', _elm_lang$core$Json_Decode$string),
-											function (visibility) {
-												return _elm_lang$core$Json_Decode$succeed(
-													{field: field, tasks: tasks, uid: uid, visibility: visibility});
+											A2(_elm_lang$core$Json_Decode_ops[':='], 'uid', _elm_lang$core$Json_Decode$int),
+											function (uid) {
+												return A2(
+													_elm_lang$core$Json_Decode$andThen,
+													A2(_elm_lang$core$Json_Decode_ops[':='], 'visibility', _elm_lang$core$Json_Decode$string),
+													function (visibility) {
+														return _elm_lang$core$Json_Decode$succeed(
+															{field: field, saveTimeCount: saveTimeCount, tasks: tasks, uid: uid, visibility: visibility});
+													});
 											});
 									});
 							});

@@ -16,10 +16,12 @@ import Html.App as App
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Html.Lazy exposing (lazy, lazy2)
-import Json.Decode as Json
+import Json.Encode
+import Json.Decode
 import String
 import Time exposing (Time, second)
-
+import Task
+import Http
 
 main : Program (Maybe Model)
 main =
@@ -32,7 +34,6 @@ main =
 
 
 port setStorage : Model -> Cmd msg
-
 port focus : String -> Cmd msg
 
 
@@ -47,7 +48,30 @@ withSetStorage : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 withSetStorage (model, cmds) =
   ( model, Cmd.batch [ setStorage model, cmds ] )
 
+saveModelToServer : Json.Encode.Value -> Cmd Msg
+saveModelToServer json =
+  let
+    url = "http://localhost:5000/data"
+  in
+    Task.perform SaveFail 
+                 (\_ -> SaveSucceed)
+                 (Http.post 
+                    Json.Decode.string
+                    url
+                    (Http.string <| Json.Encode.encode 0 json))
 
+modelToJson : Model -> Json.Encode.Value
+modelToJson model =
+  let 
+    taskToJson task =
+      Json.Encode.object 
+        [ ("description", Json.Encode.string task.description)
+        , ("completed", Json.Encode.bool task.completed)
+        , ("timeCount", Json.Encode.int task.timeCount)
+        , ("counting", Json.Encode.bool task.counting)
+        ]
+  in
+    Json.Encode.list <| List.map taskToJson model.tasks
 
 -- MODEL
 
@@ -57,6 +81,7 @@ type alias Model =
     , field : String
     , uid : Int
     , visibility : String
+    , saveTimeCount : Int
     }
 
 
@@ -76,6 +101,7 @@ emptyModel =
   , visibility = "All"
   , field = ""
   , uid = 0
+  , saveTimeCount = 0
   }
 
 
@@ -111,12 +137,20 @@ type Msg
     | CheckAll Bool
     | ChangeVisibility String
     | Tick Time
+    | SaveSucceed
+    | SaveFail Http.Error
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
   case msg of
     NoOp ->
+      model ! []
+
+    SaveSucceed ->
+      model ! []
+
+    SaveFail err ->
       model ! []
 
     Add ->
@@ -128,8 +162,7 @@ update msg model =
               model.tasks
             else
               model.tasks ++ [newTask model.field model.uid]
-      }
-        ! []
+      } ! []
 
     UpdateField str ->
       { model | field = str }
@@ -145,12 +178,12 @@ update msg model =
 
     TimeTask id ->
       let
-        updateTask t = 
-          if t.id == id 
-          then { t | counting = not t.counting } 
+        updateTask t =
+          if t.id == id
+          then { t | counting = not t.counting }
           else { t | counting = False }
       in
-        { model | tasks = List.map updateTask model.tasks }
+        { model | tasks = List.map updateTask model.tasks } 
           ! []
 
     UpdateTask id task ->
@@ -193,9 +226,17 @@ update msg model =
       let
         updateTask t =
           if t.counting then { t | timeCount = t.timeCount + 1 } else t
+        saveInterval =
+          10
       in
-        { model | tasks = List.map updateTask model.tasks }
-          ! []
+        { model | tasks = List.map updateTask model.tasks
+                , saveTimeCount = if model.saveTimeCount == saveInterval
+                                  then 0
+                                  else model.saveTimeCount + 1
+        } ! [ if model.saveTimeCount == saveInterval 
+              then saveModelToServer <| modelToJson model
+              else Cmd.none
+            ]
 
 
 -- VIEW
@@ -224,7 +265,7 @@ onEnter fail success =
       if code == 13 then success
       else fail
   in
-    on "keyup" (Json.map tagger keyCode)
+    on "keyup" (Json.Decode.map tagger keyCode)
 
 
 taskEntry : String -> Html Msg
@@ -238,7 +279,7 @@ taskEntry task =
         , autofocus True
         , value task
         , name "newTodo"
-        , on "input" (Json.map UpdateField targetValue)
+        , on "input" (Json.Decode.map UpdateField targetValue)
         , onEnter NoOp Add
         ]
         []
@@ -325,7 +366,7 @@ todoItem todo =
           , value todo.description
           , name "title"
           , id ("todo-" ++ toString todo.id)
-          , on "input" (Json.map (UpdateTask todo.id) targetValue)
+          , on "input" (Json.Decode.map (UpdateTask todo.id) targetValue)
           , onBlur (EditingTask todo.id False)
           , onEnter NoOp (EditingTask todo.id False)
           ]
@@ -384,10 +425,11 @@ visibilitySwap uri visibility actualVisibility =
 infoFooter : Html msg
 infoFooter =
   footer [ id "info" ]
-    [ p [] [ text "Double-click to edit a todo" ]
+    [ p [] [ text "Double-click to edit a todo | Click on the time to toggle counter" ]
     , p []
         [ text "Written by "
         , a [ href "https://github.com/evancz" ] [ text "Evan Czaplicki" ]
+        , text " | Enchanced by Chang"
         ]
     , p []
         [ text "Part of "

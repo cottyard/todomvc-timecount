@@ -11,12 +11,12 @@ def root():
 def todos_app(path):
     return send_from_directory('js', path)
 
-@app.route('/data', methods=['PUT'])
+@app.route('/data', methods=['POST'])
 def upload():
-    print request.json
+    print request.data
     with open('data/%s.json' % get_client_name(), 'w') as f:
-        f.write(str(request.json))
-    return 'success'
+        f.write(str(request.data))
+    return '"success"'
 
 @app.route('/view')
 def view():
@@ -25,4 +25,4 @@ def view():
 def get_client_name():
    return socket.gethostbyaddr(request.remote_addr)[0]
 
-app.run()
+app.run(port=80)
