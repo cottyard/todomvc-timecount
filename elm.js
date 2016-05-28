@@ -8081,6 +8081,17 @@ var _user$project$Todo$infoFooter = A2(
 					_elm_lang$core$Native_List.fromArray(
 						[
 							_elm_lang$html$Html$text('TodoMVC')
+						])),
+					_elm_lang$html$Html$text(' | '),
+					A2(
+					_elm_lang$html$Html$a,
+					_elm_lang$core$Native_List.fromArray(
+						[
+							_elm_lang$html$Html_Attributes$href('/view')
+						]),
+					_elm_lang$core$Native_List.fromArray(
+						[
+							_elm_lang$html$Html$text('View Clients')
 						]))
 				]))
 		]));
@@ -8143,6 +8154,7 @@ var _user$project$Todo$modelToJson = function (model) {
 	return _elm_lang$core$Json_Encode$list(
 		A2(_elm_lang$core$List$map, taskToJson, model.tasks));
 };
+var _user$project$Todo$todomvc_server_url = 'http://localhost:5000/';
 var _user$project$Todo$setStorage = _elm_lang$core$Native_Platform.outgoingPort(
 	'setStorage',
 	function (v) {
@@ -8189,7 +8201,6 @@ var _user$project$Todo$SaveFail = function (a) {
 };
 var _user$project$Todo$SaveSucceed = {ctor: 'SaveSucceed'};
 var _user$project$Todo$saveModelToServer = function (json) {
-	var url = 'http://localhost:5000/data';
 	return A3(
 		_elm_lang$core$Task$perform,
 		_user$project$Todo$SaveFail,
@@ -8199,7 +8210,7 @@ var _user$project$Todo$saveModelToServer = function (json) {
 		A3(
 			_evancz$elm_http$Http$post,
 			_elm_lang$core$Json_Decode$string,
-			url,
+			A2(_elm_lang$core$Basics_ops['++'], _user$project$Todo$todomvc_server_url, 'data'),
 			_evancz$elm_http$Http$string(
 				A2(_elm_lang$core$Json_Encode$encode, 0, json))));
 };

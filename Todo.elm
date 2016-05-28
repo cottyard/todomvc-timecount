@@ -37,6 +37,9 @@ port setStorage : Model -> Cmd msg
 port focus : String -> Cmd msg
 
 
+todomvc_server_url = "http://localhost:5000/"
+
+
 subscriptions : Model -> Sub Msg
 subscriptions model =
   Time.every second Tick
@@ -50,15 +53,12 @@ withSetStorage (model, cmds) =
 
 saveModelToServer : Json.Encode.Value -> Cmd Msg
 saveModelToServer json =
-  let
-    url = "http://localhost:5000/data"
-  in
-    Task.perform SaveFail 
-                 (\_ -> SaveSucceed)
-                 (Http.post 
-                    Json.Decode.string
-                    url
-                    (Http.string <| Json.Encode.encode 0 json))
+  Task.perform SaveFail 
+               (\_ -> SaveSucceed)
+               (Http.post 
+                  Json.Decode.string
+                  (todomvc_server_url ++ "data")
+                  (Http.string <| Json.Encode.encode 0 json))
 
 modelToJson : Model -> Json.Encode.Value
 modelToJson model =
@@ -434,5 +434,7 @@ infoFooter =
     , p []
         [ text "Part of "
         , a [ href "http://todomvc.com" ] [ text "TodoMVC" ]
+        , text " | "
+        , a [ href "/view" ] [ text "View Clients" ]
         ]
     ]

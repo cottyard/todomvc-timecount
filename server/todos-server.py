@@ -1,5 +1,9 @@
-from flask import Flask, send_from_directory, redirect, request
+from flask import (
+    Flask, send_from_directory, 
+    redirect, request, render_template)
 import socket
+import os
+
 
 app = Flask(__name__, static_url_path='')
 
@@ -7,9 +11,9 @@ app = Flask(__name__, static_url_path='')
 def root():
     return redirect("/index.html")
 
-@app.route('/<path:path>')
+@app.route('/static/<path:path>')
 def todos_app(path):
-    return send_from_directory('js', path)
+    return send_from_directory('static', path)
 
 @app.route('/data', methods=['POST'])
 def upload():
@@ -20,9 +24,15 @@ def upload():
 
 @app.route('/view')
 def view():
-    pass
+    client_files = os.listdir('data')
+    clients = [os.path.splitext(c)[0] for c in client_files]
+    return render_template('view_all.tmpl', clients=clients)
+
+@app.route('/view/<path:client>')
+def view_client(client):
+    return send_from_directory('data', client + '.json')
 
 def get_client_name():
    return socket.gethostbyaddr(request.remote_addr)[0]
 
-app.run(port=80)
+app.run(host="localhost", port=5000)

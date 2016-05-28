@@ -1,0 +1,9 @@
+<!doctype html>
+<title>View All Clients</title>
+<body>
+  <ul>
+  {% for client in clients recursive %}
+      <li><a href="view/{{ client }}">{{ client }}</a>
+  {% endfor %}
+  </ul>
+</body>
