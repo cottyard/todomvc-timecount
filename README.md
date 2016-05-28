@@ -1,6 +1,8 @@
 Forked from https://github.com/tastejs/todomvc/tree/gh-pages/examples/elm
 
-Added a time-count feature and a server to view client status.
+Added a time-count feature and a server to view client states.
+
+You can use it to track your work status as well as your colleagues'.
 
 HOW TO DEPLOY
 ===
@@ -12,6 +14,7 @@ HOW TO DEPLOY
          - *index.html*
          - *elm.js*
          - *style.css*
+         - *table_style.css*
        - data
        - templates
          - view_all.tmpl
